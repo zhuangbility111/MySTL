@@ -1,3 +1,0 @@
-D:/CLion/CLion 2019.2/projects/STL_MY_ALLOCATOR/cmake-build-debug/CMakeFiles/STL_MY_ALLOCATOR.dir
-D:/CLion/CLion 2019.2/projects/STL_MY_ALLOCATOR/cmake-build-debug/CMakeFiles/edit_cache.dir
-D:/CLion/CLion 2019.2/projects/STL_MY_ALLOCATOR/cmake-build-debug/CMakeFiles/rebuild_cache.dir

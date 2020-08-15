@@ -1,3 +1,0 @@
-"D:\CLion\CLion 2019.2\bin\cmake\win\bin\cmake.exe" -E remove -f CMakeFiles\STL_MY_ALLOCATOR.dir/objects.a
-D:\CLion\MinGW\mingw64\bin\ar.exe cr CMakeFiles\STL_MY_ALLOCATOR.dir/objects.a @CMakeFiles\STL_MY_ALLOCATOR.dir\objects1.rsp
-D:\CLion\MinGW\mingw64\bin\g++.exe -g   -Wl,--whole-archive CMakeFiles\STL_MY_ALLOCATOR.dir/objects.a -Wl,--no-whole-archive  -o STL_MY_ALLOCATOR.exe -Wl,--out-implib,libSTL_MY_ALLOCATOR.dll.a -Wl,--major-image-version,0,--minor-image-version,0 @CMakeFiles\STL_MY_ALLOCATOR.dir\linklibs.rsp
