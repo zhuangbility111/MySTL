@@ -1793,7 +1793,7 @@ void __merge_adaptive(BidirectionalIterator first, BidirectionalIterator middle,
         }
         // 新的中点
         // 前面的序列小于后面的序列
-        BidirectionalIterator new_middle = __rotate_adaptive();
+        BidirectionalIterator new_middle = __rotate_adaptive(first_cut, middle, last_cut, len1 - len11, len22, buf, buf_size);
         // 递归对前面的序列做排序
         __merge_adaptive(first, first_cut, new_middle, len11, len22, buf, buf_size);
         // 递归对后面的序列做排序
