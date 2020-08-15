@@ -434,4 +434,5 @@ BidirectionalIterator2 __copy_backward_d(RandomAccessIterator first, RandomAcces
     return result;
 }
 
+
 #endif //STL_MY_ALLOCATOR_MY_STL_ALGOBASE_H
