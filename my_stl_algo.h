@@ -1106,7 +1106,7 @@ ForwardIterator __lower_bound(ForwardIterator first, ForwardIterator last, const
         if (*middle < value) {
             len = len - half - 1;
             first = middle;
-            ++middle;
+            ++first;
         }
         // 如果中间元素大于等于value，则这个中间元素有可能是结果
         // 取左半边，并且这个中间元素需要包括进来
@@ -1137,7 +1137,7 @@ ForwardIterator __lower_bound(ForwardIterator first, ForwardIterator last, const
         if (comp(*middle, value)) {
             len = len - half - 1;
             first = middle;
-            ++middle;
+            ++first;
         }
         // 如果中间元素大于等于value，则这个中间元素有可能是结果
         // 取左半边，并且这个中间元素需要包括进来
@@ -1452,6 +1452,8 @@ void partial_sort(RandomAccessIterator first, RandomAccessIterator middle, Rando
 template <class InputIterator, class RandomAccessIterator>
 void partial_sort_copy(InputIterator first, InputIterator last,
                         RandomAccessIterator result_first, RandomAccessIterator result_last) {
+    if (first == last || result_first == result_last)
+        return;
     copy(first, last, result_first);
     partial_sort(first, last, last);
 }
@@ -1674,11 +1676,6 @@ pair<RandomAccessIterator, RandomAccessIterator> __equal_range(RandomAccessItera
 template <class ForwardIterator, class T>
 pair<ForwardIterator, ForwardIterator> __equal_range(ForwardIterator first,
                 ForwardIterator last, const T& value, forward_iterator_tag) {
-
-}
-template <class ForwardIterator, class T>
-inline pair<ForwardIterator, ForwardIterator> equal_range(ForwardIterator first,
-                                                          ForwardIterator last, const T& value) {
     typedef typename iterator_traits<ForwardIterator>::difference_type Distance;
     Distance len = 0;
     Distance half;
@@ -1706,7 +1703,12 @@ inline pair<ForwardIterator, ForwardIterator> equal_range(ForwardIterator first,
     }
     // 如果没有匹配的，返回一对迭代器，指向第一个大于value的元素
     return pair<ForwardIterator, ForwardIterator>(first, first);
-
+}
+template <class ForwardIterator, class T>
+inline pair<ForwardIterator, ForwardIterator> equal_range(ForwardIterator first,
+                                                          ForwardIterator last, const T& value) {
+    typedef typename iterator_traits<ForwardIterator>::iterator_category category;
+    __equal_range(first, last, value, category());
 }
 
 // 版本2，使用仿函数comp
@@ -1752,13 +1754,14 @@ inline void nth_element(RandomAccessIterator first, RandomAccessIterator nth, Ra
 // inplace_merge，将两个有序区间合并为一个
 // 因为是将两个区间原地合并，所以需要申请缓冲区
 
+
 // 有缓冲区的底层inplace_merge函数
 template <class BidirectionalIterator, class T, class Distance, class Pointer>
 void __merge_adaptive(BidirectionalIterator first, BidirectionalIterator middle, BidirectionalIterator last,
                         Distance len1, Distance len2, Pointer buf, Distance buf_size) {
     // 如果序列1比较短，并且缓冲区足够装下序列1
     // 那么序列1拷贝到缓冲区中，然后使用merge将缓冲区1中的序列1和序列2合并
-    if (len1 <= len2 && len1 <= buf_size) {
+    if (len1 < len2 && len1 <= buf_size) {
         Pointer end_buf = copy(first, middle, buf);
         merge(buf, end_buf, middle, last, first);
     }
@@ -1769,8 +1772,63 @@ void __merge_adaptive(BidirectionalIterator first, BidirectionalIterator middle,
         __merge_backward(first, middle, buf, end_buf, last);
     }
     // 如果缓冲区比两个序列都小，就要换一种思路来处理
+    // 将序列拆分成两个子序列，前面子序列的所有元素比后面子序列的所有元素小
+    // 然后递归处理这两个子序列，这样就可以一直缩小到缓冲区大小足够为止
     else {
+        BidirectionalIterator first_cut = first;
+        BidirectionalIterator last_cut = middle;
+        Distance len11 = 0;
+        Distance len22 = 0;
+        if (len1 < len2) {
+            len22 = len2 / 2;
+            advance(last_cut, len22);
+            first_cut = upper_bound(first, middle, *last_cut);
+            distance(first, first_cut, len11);
+        }
+        else {
+            len11 = len1 / 2;
+            advance(first_cut, len11);
+            last_cut = lower_bound(middle, last, *first_cut);
+            distance(middle, last_cut, len22);
+        }
+        // 新的中点
+        // 前面的序列小于后面的序列
+        BidirectionalIterator new_middle = __rotate_adaptive();
+        // 递归对前面的序列做排序
+        __merge_adaptive(first, first_cut, new_middle, len11, len22, buf, buf_size);
+        // 递归对后面的序列做排序
+        __merge_adaptive(new_middle, last_cut, last, len1 - len11, len2 - len22, buf, buf_size);
+    }
+}
 
+// 旋转函数，主要是将后面序列的前几个小的移动到前面序列，而将后面序列的后面几个大的移动到后面序列
+// 其实就是集体向左移动，使得后面的元素保持顺序在前面，前面的元素保持顺序在后面
+// 从而使得移动后前面序列的所有元素均小于后面序列的所有元素
+// 所以才可以递归使用小缓冲区分别对两个子序列做合并
+// 先用缓冲区来实现旋转，如果不行再借用rotate方法
+template <class BidirectionalIterator1, class BidirectionalIterator2, class Distance>
+BidirectionalIterator1 __rotate_adaptive(BidirectionalIterator1 first, BidirectionalIterator1 middle, BidirectionalIterator1 last,
+                                            Distance len1, Distance len2, BidirectionalIterator2 buf, Distance buf_size) {
+    if (len1 < len2 && len1 <= buf_size) {
+        // 将前半序列拷贝到缓冲区
+        BidirectionalIterator1 buf_end = copy(first, middle, buf);
+        // 后半序列拷贝到前面
+        copy(middle, last, first);
+        // 前半序列拷贝到后面，返回新的中间点
+        return copy_backward(buf, buf_end, last);
+    }
+    else if (len2 <= len1 && len2 <= buf_size) {
+        // 将后半序列拷贝到缓冲区
+        BidirectionalIterator1 buf_end = copy(middle, last, buf);
+        // 将前半序列从后往前拷贝到后面
+        copy_backward(first, middle, last);
+        return copy(buf, buf_end, first);
+    }
+    else {
+        // 缓冲区不够，则直接使用原地旋转算法
+        rotate(first, middle, last);
+        advance(first, len2);
+        return first;
     }
 }
 
@@ -1801,6 +1859,21 @@ inline void inplace_merge(BidirectionalIterator first, BidirectionalIterator mid
     if (first == middle || middle == last)
         return;
     __inplace_merge_aux(first, middle, last);
+}
+
+// 归并排序。利用inplace_merge实现
+template <class BidirectionalIterator>
+void merge_sort(BidirectionalIterator first, BidirectionalIterator last) {
+    typename iterator_traits<BidirectionalIterator>::difference_type n = distance(first, last);
+    if (n == 0 || n == 1)
+        return;
+    BidirectionalIterator middle = first;
+    advance(middle, n / 2);
+    // 递归使左右序列有序
+    merge_sort(first, middle);
+    merge_sort(middle, last);
+    // 然后使用inplace_merge进行归并
+    inplace_merge(first, middle, last);
 }
 
 #endif //STL_MY_ALLOCATOR_MY_STL_ALGO_H
