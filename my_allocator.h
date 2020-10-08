@@ -6,8 +6,8 @@
 #define STL_MY_ALLOCATOR_MY_ALLOCATOR_H
 
 #include <new>          // 为了使用placement new，在已申请的内存空间上对对象进行初始化
-#include <type_traits>  // 为了使用__type_traits，它是用来萃取型别的特性，例如是否具备non-trivial default ctor
 #include "second_level_alloc.h"
+#include "my_type_traits.h"
 
 using namespace std;
 
@@ -46,8 +46,8 @@ namespace my_std {
     inline void _destroy(ForwardIterator first, ForwardIterator last, T*) {
         // __type_traits就是所谓的萃取器，可以使用它的一个类has_trivial_destructor来判断某个类型是否有trivial destructor
         // 需要加typename，表示typedef的东西是一个类型，而不是一个普通成员
-//    typedef typename __type_traits<T>::has_trivial_destructor trivial_destructor;
-//    _destroy_aux(first, last, trivial_destructor());    // 进一步调用辅助函数，根据T是否有trivial destructor来做进一步的处理
+        typedef typename __type_traits<T>::has_trivial_destructor trivial_destructor;
+        _destroy_aux(first, last, trivial_destructor());    // 进一步调用辅助函数，根据T是否有trivial destructor来做进一步的处理
     }
 
 // 如果T拥有non-trivial destructor，则trivial_destructor()会返回一个__false_type的值，所以会调用这个函数
@@ -68,10 +68,10 @@ namespace my_std {
     inline void _destroy_aux(ForwardIterator first, ForwardIterator last, __true_type) {}
 
 
-// 第三个destroy版本，主要是应对参数为两个char*的情况
+// 第三个destroy版本（模板特例化），主要是应对参数为两个char*的情况
     inline void destroy(char*, char*) {}
 
-// 第四个destroy版本，主要是应对参数为两个wchar_t*的情况
+// 第四个destroy版本（模板特例化），主要是应对参数为两个wchar_t*的情况
     inline void destroy(wchar_t*, wchar_t*) {}
 
 
